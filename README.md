@@ -27,6 +27,13 @@ npm run dev
 
 A API sobe em http://localhost:3000
 
+## Login inicial
+
+Ao iniciar a API pela primeira vez, é criado automaticamente o usuário administrador:
+- **Login:** `admin`
+- **Senha:** `123456`
+
+
 ## Rotas da API
 
 ### Autenticação
