@@ -58,6 +58,64 @@ app.post('/api/usuarios', (req, res) => {
   }
 });
 
+// Editar usuário
+app.put('/api/usuarios/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, login, senha, perfil } = req.body;
+
+    const usuario = db.prepare('SELECT id, nome, login, perfil FROM usuarios WHERE id = ?').get(id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (!nome || !login || !perfil) {
+      return res.status(400).json({ error: 'Campos nome, login e perfil são obrigatórios' });
+    }
+
+    const loginOcupado = db.prepare('SELECT id FROM usuarios WHERE login = ? AND id != ?').get(login, id);
+    if (loginOcupado) {
+      return res.status(400).json({ error: 'Login já utilizado por outro usuário' });
+    }
+
+    if (senha) {
+      const hash = bcrypt.hashSync(senha, 10);
+      db.prepare(`
+        UPDATE usuarios
+        SET nome = ?, login = ?, senha = ?, perfil = ?
+        WHERE id = ?
+      `).run(nome, login, hash, perfil, id);
+    } else {
+      db.prepare(`
+        UPDATE usuarios
+        SET nome = ?, login = ?, perfil = ?
+        WHERE id = ?
+      `).run(nome, login, perfil, id);
+    }
+
+    const usuarioAtualizado = db.prepare('SELECT id, nome, login, perfil FROM usuarios WHERE id = ?').get(id);
+    return res.json(usuarioAtualizado);
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao atualizar usuário' });
+  }
+});
+
+// Excluir usuário
+app.delete('/api/usuarios/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = db.prepare('SELECT id FROM usuarios WHERE id = ?').get(id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
+    return res.json({ message: 'Usuário excluído com sucesso' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
+});
+
 // ==========================================
 // PREPARADO PARA FUTURAS ROTAS (Produtos, Estoque)
 // ==========================================
