@@ -1,5 +1,9 @@
 const express = require('express');
+const cors = require('cors');
 const app = express();
+
+// Permite requisições de outras origens (ex: frontend React)
+app.use(cors());
 const PORT = process.env.PORT || 3000;
 
 // Middleware para interpretar JSON nas requisições
