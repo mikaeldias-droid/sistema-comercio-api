@@ -18,6 +18,39 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
+// AUTENTICAÇÃO (LOGIN)
+// ==========================================
+
+// Autenticar usuário
+app.post('/api/login', (req, res) => {
+  try {
+    const { login, senha } = req.body;
+
+    if (!login || !senha) {
+      return res.status(400).json({ error: 'Login e senha são obrigatórios' });
+    }
+
+    const usuario = db.prepare('SELECT id, nome, login, senha, perfil FROM usuarios WHERE login = ?').get(login);
+    if (!usuario) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    const senhaValida = bcrypt.compareSync(senha, usuario.senha);
+    if (!senhaValida) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    return res.status(200).json({
+      id: usuario.id,
+      nome: usuario.nome,
+      perfil: usuario.perfil,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao autenticar usuário' });
+  }
+});
+
+// ==========================================
 // ROTAS DE USUÁRIOS
 // ==========================================
 
@@ -305,6 +338,22 @@ app.put('/api/estoque/:id', (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ error: 'Erro ao atualizar item de estoque' });
+  }
+});
+
+// Excluir item de estoque
+app.delete('/api/estoque/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = db.prepare('SELECT id, produto, quantidade, minima, observacao FROM estoque WHERE id = ?').get(id);
+    if (!item) {
+      return res.status(404).json({ error: 'Item de estoque não encontrado' });
+    }
+
+    db.prepare('DELETE FROM estoque WHERE id = ?').run(id);
+    return res.json({ message: 'Item de estoque excluído com sucesso' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao excluir item de estoque' });
   }
 });
 
