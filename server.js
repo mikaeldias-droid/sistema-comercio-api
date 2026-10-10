@@ -178,7 +178,7 @@ app.post('/api/produtos', (req, res) => {
 app.put('/api/produtos/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const produto = db.prepare('SELECT id FROM produtos WHERE id = ?').get(id);
+    const produto = db.prepare('SELECT id, nome, categoria, preco, estoque, observacao FROM produtos WHERE id = ?').get(id);
     if (!produto) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
@@ -215,7 +215,7 @@ app.put('/api/produtos/:id', (req, res) => {
 app.delete('/api/produtos/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const produto = db.prepare('SELECT id FROM produtos WHERE id = ?').get(id);
+    const produto = db.prepare('SELECT id, nome, categoria, preco, estoque, observacao FROM produtos WHERE id = ?').get(id);
     if (!produto) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
@@ -228,12 +228,84 @@ app.delete('/api/produtos/:id', (req, res) => {
 });
 
 // ==========================================
-// PREPARADO PARA FUTURAS ROTAS (Estoque)
+// ROTAS DE CONTROLE DE ESTOQUE
 // ==========================================
 
-// Rota de Estoque (futuro)
+// Listar itens de estoque (com campo "situacao")
 app.get('/api/estoque', (req, res) => {
-  res.json({ message: 'Rota de Estoque (em breve)' });
+  try {
+    const itens = db.prepare('SELECT id, produto, quantidade, minima, observacao FROM estoque').all();
+    const formatados = itens.map((item) => ({
+      ...item,
+      situacao: item.quantidade <= item.minima ? 'Estoque baixo' : 'Disponível',
+    }));
+    return res.json(formatados);
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao listar estoque' });
+  }
+});
+
+// Cadastrar item no estoque
+app.post('/api/estoque', (req, res) => {
+  try {
+    const { produto, quantidade, minima, observacao } = req.body;
+
+    if (!produto || quantidade === undefined || quantidade === null || isNaN(quantidade)) {
+      return res.status(400).json({ error: 'Produto e quantidade são obrigatórios' });
+    }
+
+    const quantNum = parseInt(quantidade, 10);
+    const minNum = minima !== undefined && minima !== null && !isNaN(minima) ? parseInt(minima, 10) : 0;
+
+    const resultado = db.prepare(`
+      INSERT INTO estoque (produto, quantidade, minima, observacao)
+      VALUES (?, ?, ?, ?)
+    `).run(produto, quantNum, minNum, observacao || '');
+
+    const novoItem = db.prepare('SELECT id, produto, quantidade, minima, observacao FROM estoque WHERE id = ?').get(resultado.lastInsertRowid);
+    return res.status(201).json({
+      ...novoItem,
+      situacao: novoItem.quantidade <= novoItem.minima ? 'Estoque baixo' : 'Disponível',
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao cadastrar item de estoque' });
+  }
+});
+
+// Atualizar item/quantidade no estoque
+app.put('/api/estoque/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = db.prepare('SELECT id, produto, quantidade, minima, observacao FROM estoque WHERE id = ?').get(id);
+    if (!item) {
+      return res.status(404).json({ error: 'Item de estoque não encontrado' });
+    }
+
+    const { produto, quantidade, minima, observacao } = req.body;
+
+    if (quantidade === undefined || quantidade === null || isNaN(quantidade)) {
+      return res.status(400).json({ error: 'Quantidade é obrigatória' });
+    }
+
+    const quantNum = parseInt(quantidade, 10);
+    const minNum = minima !== undefined && minima !== null && !isNaN(minima) ? parseInt(minima, 10) : item.minima;
+    const prodNome = (produto && produto.trim()) ? produto : item.produto;
+    const obs = observacao !== undefined ? observacao : item.observacao;
+
+    db.prepare(`
+      UPDATE estoque
+      SET produto = ?, quantidade = ?, minima = ?, observacao = ?
+      WHERE id = ?
+    `).run(prodNome, quantNum, minNum, obs, id);
+
+    const atualizado = db.prepare('SELECT id, produto, quantidade, minima, observacao FROM estoque WHERE id = ?').get(id);
+    return res.json({
+      ...atualizado,
+      situacao: atualizado.quantidade <= atualizado.minima ? 'Estoque baixo' : 'Disponível',
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao atualizar item de estoque' });
+  }
 });
 
 // Inicialização do servidor Express
