@@ -14,13 +14,42 @@ Backend (API) do Projeto Integrador da UESPI. O frontend fica em https://github.
 
 - Node.js
 - Express
+- SQLite (better-sqlite3)
+- bcryptjs
+- CORS
 
 ## Como rodar
 
+```bash
 npm install
 npm run dev
+```
 
 A API sobe em http://localhost:3000
+
+## Rotas da API
+
+### Autenticação
+- `POST /api/login` - Autentica usuário com login e senha (retorna dados sem a senha)
+
+### Usuários
+- `GET /api/usuarios` - Lista todos os usuários cadastrados (sem a senha)
+- `POST /api/usuarios` - Cadastra um novo usuário (`nome`, `login`, `senha`, `perfil`)
+- `PUT /api/usuarios/:id` - Atualiza os dados de um usuário existente
+- `DELETE /api/usuarios/:id` - Exclui um usuário por ID
+
+### Produtos
+- `GET /api/produtos` - Lista todos os produtos
+- `GET /api/produtos/:id` - Busca detalhes de um produto por ID
+- `POST /api/produtos` - Cadastra um novo produto (`nome`, `categoria`, `preco`, `estoque`, `observacao`)
+- `PUT /api/produtos/:id` - Atualiza um produto por ID
+- `DELETE /api/produtos/:id` - Exclui um produto por ID
+
+### Controle de Estoque
+- `GET /api/estoque` - Lista os itens do estoque com o campo `situacao` ("Estoque baixo" ou "Disponível")
+- `POST /api/estoque` - Cadastra um item de estoque (`produto`, `quantidade`, `minima`, `observacao`)
+- `PUT /api/estoque/:id` - Atualiza quantidade e informações de um item no estoque
+- `DELETE /api/estoque/:id` - Exclui um item do estoque por ID
 
 ## Gerenciamento do projeto
 
