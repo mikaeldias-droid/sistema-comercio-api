@@ -117,13 +117,119 @@ app.delete('/api/usuarios/:id', (req, res) => {
 });
 
 // ==========================================
-// PREPARADO PARA FUTURAS ROTAS (Produtos, Estoque)
+// ROTAS DE PRODUTOS (CRUD)
 // ==========================================
 
-// Rota de Produtos (futuro)
+// Listar todos os produtos
 app.get('/api/produtos', (req, res) => {
-  res.json({ message: 'Rota de Produtos (em breve)' });
+  try {
+    const produtos = db.prepare('SELECT id, nome, categoria, preco, estoque, observacao FROM produtos').all();
+    res.json(produtos);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar produtos' });
+  }
 });
+
+// Buscar produto por ID
+app.get('/api/produtos/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const produto = db.prepare('SELECT id, nome, categoria, preco, estoque, observacao FROM produtos WHERE id = ?').get(id);
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+    return res.json(produto);
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao buscar produto' });
+  }
+});
+
+// Cadastrar produto
+app.post('/api/produtos', (req, res) => {
+  try {
+    let { nome, categoria, preco, estoque, observacao } = req.body;
+
+    if (!nome || preco === undefined || preco === null || preco === '') {
+      return res.status(400).json({ error: 'Nome e preço são obrigatórios' });
+    }
+
+    const precoNum = typeof preco === 'string' ? parseFloat(preco.replace(',', '.')) : Number(preco);
+    if (isNaN(precoNum) || precoNum < 0) {
+      return res.status(400).json({ error: 'Preço inválido' });
+    }
+
+    const estoqueNum = (estoque !== undefined && estoque !== null && estoque !== '' && !isNaN(estoque))
+      ? parseInt(estoque, 10)
+      : 0;
+
+    const resultado = db.prepare(`
+      INSERT INTO produtos (nome, categoria, preco, estoque, observacao)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(nome, categoria || '', precoNum, estoqueNum, observacao || '');
+
+    const novoProduto = db.prepare('SELECT id, nome, categoria, preco, estoque, observacao FROM produtos WHERE id = ?').get(resultado.lastInsertRowid);
+    return res.status(201).json(novoProduto);
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao cadastrar produto' });
+  }
+});
+
+// Editar produto
+app.put('/api/produtos/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const produto = db.prepare('SELECT id FROM produtos WHERE id = ?').get(id);
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    let { nome, categoria, preco, estoque, observacao } = req.body;
+
+    if (!nome || preco === undefined || preco === null || preco === '') {
+      return res.status(400).json({ error: 'Nome e preço são obrigatórios' });
+    }
+
+    const precoNum = typeof preco === 'string' ? parseFloat(preco.replace(',', '.')) : Number(preco);
+    if (isNaN(precoNum) || precoNum < 0) {
+      return res.status(400).json({ error: 'Preço inválido' });
+    }
+
+    const estoqueNum = (estoque !== undefined && estoque !== null && estoque !== '' && !isNaN(estoque))
+      ? parseInt(estoque, 10)
+      : 0;
+
+    db.prepare(`
+      UPDATE produtos
+      SET nome = ?, categoria = ?, preco = ?, estoque = ?, observacao = ?
+      WHERE id = ?
+    `).run(nome, categoria || '', precoNum, estoqueNum, observacao || '', id);
+
+    const produtoAtualizado = db.prepare('SELECT id, nome, categoria, preco, estoque, observacao FROM produtos WHERE id = ?').get(id);
+    return res.json(produtoAtualizado);
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao atualizar produto' });
+  }
+});
+
+// Excluir produto
+app.delete('/api/produtos/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const produto = db.prepare('SELECT id FROM produtos WHERE id = ?').get(id);
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    db.prepare('DELETE FROM produtos WHERE id = ?').run(id);
+    return res.json({ message: 'Produto excluído com sucesso' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Erro ao excluir produto' });
+  }
+});
+
+// ==========================================
+// PREPARADO PARA FUTURAS ROTAS (Estoque)
+// ==========================================
 
 // Rota de Estoque (futuro)
 app.get('/api/estoque', (req, res) => {
