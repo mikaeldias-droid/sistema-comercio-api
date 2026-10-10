@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const db = require('./database');
 const app = express();
 
 // Permite requisições de outras origens (ex: frontend React)
@@ -18,9 +19,15 @@ app.get('/', (req, res) => {
 // PREPARADO PARA FUTURAS ROTAS (Usuários, Produtos, Estoque)
 // ==========================================
 
-// Rota de Usuários (futuro)
+// Listar usuários (sem o campo senha)
 app.get('/api/usuarios', (req, res) => {
-  res.json({ message: 'Rota de Usuários (em breve)' });
+  try {
+    const usuarios = db.prepare('SELECT id, nome, login, perfil FROM usuarios').all();
+    res.json(usuarios);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar usuários' });
+  }
+});
 });
 
 // Rota de Produtos (futuro)
